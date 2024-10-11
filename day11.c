@@ -10,54 +10,84 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 	FILE* f = fopen(argv[1], "r");
+    char line[4096];
 
     long unsigned fsize = get_file_size(f);
     long unsigned line_len = get_line_len(f);
+    long unsigned num_lines = fsize / line_len;
 
-    int cols_with_no_stars[line_len*2];
-    memset(cols_with_no_stars, 0, line_len*2 * sizeof(int));
-    int num_cols_with_no_stars = 0;
+    int cols_with_no_stars[line_len];
+    int rows_with_no_stars[num_lines];
+    memset(cols_with_no_stars, 0, line_len * sizeof(int));
+    memset(rows_with_no_stars, 0, num_lines * sizeof(int));
 
-    // check for cols with no stars
+    // look for empty cols
     for (int c = 0; c < line_len; c++) {
         int col_has_star = 0;
-
-        char line[4096];
         while (fgets(line, 4096, f)) {
             if (line[c] == '#') {
                 col_has_star = 1;
                 break;
             }
         }
-        fseek(f, 0, SEEK_SET);
         if (!col_has_star) {
-            cols_with_no_stars[c + num_cols_with_no_stars] = 1;
-            num_cols_with_no_stars++;
+            cols_with_no_stars[c] = 1;
+        }
+        fseek(f, 0, SEEK_SET);
+    }
+
+    // look for galaxies & empty rows
+    int** galaxies = calloc(fsize, sizeof(int*));
+    unsigned int galaxies_len = 0;
+    unsigned int r = 0;
+    while (fgets(line, 4096, f)) {
+        int row_has_star = 0;
+        for (unsigned int c = 0; c < line_len; c++) {
+            if (line[c] == '#') {
+                row_has_star = 1;
+                galaxies[galaxies_len] = calloc(2, sizeof(int));
+                galaxies[galaxies_len][0] = r;
+                galaxies[galaxies_len++][1] = c;
+            }
+        }
+        if (!row_has_star) {
+            rows_with_no_stars[r] = 1;
+        }
+        r++;
+    }
+
+    // get distances
+    unsigned long long NUM_EXTRA_EMPTY_SPACE_LINES = 999999;
+    unsigned long long distance_sum = 0;
+    for (int i = 0; i < galaxies_len; i++) {
+        for (int j = i + 1; j < galaxies_len; j++) {
+            unsigned long long dist = abs(galaxies[i][0] - galaxies[j][0]) + abs(galaxies[i][1] - galaxies[j][1]);
+            unsigned int upper_galaxy = galaxies[i][0] < galaxies[j][0] ? i : j;
+            unsigned int lower_galaxy = upper_galaxy == i ? j : i;
+            unsigned int left_galaxy = galaxies[i][1] < galaxies[j][1] ? i : j;
+            unsigned int right_galaxy = left_galaxy == i ? j : i;
+            // empty space?
+            for (int r = galaxies[upper_galaxy][0] + 1; r < galaxies[lower_galaxy][0]; r++) {
+                if (rows_with_no_stars[r]) {
+                    dist += NUM_EXTRA_EMPTY_SPACE_LINES;
+                }
+            }
+            for (int c = galaxies[left_galaxy][1] + 1; c < galaxies[right_galaxy][1]; c++) {
+                if (cols_with_no_stars[c]) {
+                    dist += NUM_EXTRA_EMPTY_SPACE_LINES;
+                }
+            }
+            distance_sum += dist;
         }
     }
 
-    // now set the star field with appropriate spaces
-    int r = 0;
-    int c = 0;
-    int ch;
-    char* starfield = calloc(fsize * 4, sizeof(char));
-    while ((ch = fgetc(f)) && ch != EOF) {
-        starfield[r * line_len + c] = ch;
-        if (cols_with_no_stars[c]) {
-            c++;
-            starfield[r * line_len + c] = ch;
-        }
-        if (c == '\n') {
-            c = 0;
-            r++;
-        } else {
-            c++;
-        }
+    printf("distance sum: %llu\n", distance_sum);
+
+    // wrap up
+    for (int i = 0; i < galaxies_len; i++) {
+        free(galaxies[i]);
     }
-
-    puts(starfield);
-
-    fclose(f);
+    free(galaxies);
     return 0;
 }
 long unsigned get_file_size(FILE* f) {
