@@ -2,7 +2,7 @@
 #include "stdlib.h"
 #include "string.h"
 
-long unsigned get_num_possible_sequences(char*, int, int*, int, int);
+long unsigned get_num_possible_sequences(char*, int*, int);
 int main(int argc, char** argv) {
 	if (argc < 2) {
 		puts("provide filename");
@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
         }
         
         // calculate how many possible arrangements of broken/fixed spring sequences there are
-        sum += get_num_possible_sequences(field, 0, seq, seq_len, 0);
+        sum += get_num_possible_sequences(field, seq, seq_len);
     }
 
     printf("sum: %lu\n", sum);
@@ -36,14 +36,27 @@ int main(int argc, char** argv) {
 }
 
 // .?#
-long unsigned get_num_possible_sequences(char* field, int field_ind, int* seq, int seq_len, int seq_ind) {
-    for (int i = field_ind; i < strlen(field); i++) {
-        int seq_val = seq[seq_ind];
+long unsigned get_num_possible_sequences(char* field, int* seq, int seq_len) {
+	long unsigned sum = 0;
+	int field_len = strlen(field);
+    for (int i = 0; i < field_len; i++) {
+		printf("seq[0]: %d field: %s\n", seq[0], field);
         int lookahead_ind = 1;
-        while (lookahead_ind <= seq_val)
+        while (lookahead_ind <= seq[0]) {
+			if (i + lookahead_ind >= field_len) return (seq_len == 1) ? sum : 0;
+			char c = field[i + lookahead_ind];
+			if (lookahead_ind == seq[0]) {
+				if (c == '.' || c == '?') {
+					if (i + lookahead_ind + 1 >= field_len)
+						return (seq_len == 1) ? 1 : 0;
+					sum += get_num_possible_sequences(field + i + lookahead_ind + 1, seq + 1, seq_len - 1);
+				} else break; // #
+			} else {
+				if (c == '.') break;
+			}
+			lookahead_ind++;
+		}
     }
 
-    puts("");
-
-    return 1;
+    return sum;
 }
