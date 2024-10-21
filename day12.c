@@ -37,26 +37,41 @@ int main(int argc, char** argv) {
 
 // .?#
 long unsigned get_num_possible_sequences(char* field, int* seq, int seq_len) {
-	long unsigned sum = 0;
-	int field_len = strlen(field);
-    for (int i = 0; i < field_len; i++) {
-		printf("seq[0]: %d field: %s\n", seq[0], field);
-        int lookahead_ind = 1;
-        while (lookahead_ind <= seq[0]) {
-			if (i + lookahead_ind >= field_len) return (seq_len == 1) ? sum : 0;
-			char c = field[i + lookahead_ind];
-			if (lookahead_ind == seq[0]) {
-				if (c == '.' || c == '?') {
-					if (i + lookahead_ind + 1 >= field_len)
-						return (seq_len == 1) ? 1 : 0;
-					sum += get_num_possible_sequences(field + i + lookahead_ind + 1, seq + 1, seq_len - 1);
-				} else break; // #
-			} else {
-				if (c == '.') break;
-			}
-			lookahead_ind++;
-		}
-    }
+  long unsigned sum = 0;
+  int field_len = strlen(field);
+  for (int i = 0; i < field_len; i++) {
+    if (i > 0 && field[i - 1] == '#') break;
+    //printf("seq: %d\n", seq[0]);
+    //for (int v = 0; v < i; v++) printf(" ");
+    //printf("v\n");
+    //puts(field);
+    //puts("");
+    int lookahead_ind = 0;
+    while (lookahead_ind < seq[0]) {
+      if (i + lookahead_ind >= field_len) return sum;
+      if (field[i + lookahead_ind] == '.') goto continue_for;
 
-    return sum;
+      lookahead_ind++;
+    }
+    if (seq_len == 1) {
+      if (i + lookahead_ind >= field_len) {
+        sum += 1;
+        break;
+      }
+      if (field[i + lookahead_ind] == '#') continue;
+      else {
+        sum += 1;
+	continue;
+      }
+    } else {
+      if (i + lookahead_ind + 1 >= field_len)
+        break;
+    }
+    if (field[i + lookahead_ind] == '.' || field[i + lookahead_ind] == '?') {
+      sum += get_num_possible_sequences(field + seq[0] + i + 1, seq+1, seq_len-1);
+    }
+    continue_for: continue;
+  }
+
+  return sum;
 }
